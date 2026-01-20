@@ -66,6 +66,7 @@ export const StepCard: React.FC<StepCardProps> = ({ step, index, onUpdate, onDel
         {/* Actions - Hidden in Print */}
         <div className="flex items-center gap-1 no-print opacity-0 group-hover:opacity-100 transition-opacity">
           <button 
+            type="button"
             onClick={() => onDelete(step.id)}
             className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors"
             title="刪除步驟"
@@ -87,6 +88,7 @@ export const StepCard: React.FC<StepCardProps> = ({ step, index, onUpdate, onDel
             {/* Overlay Actions for Image - Hidden in Print */}
             <div className="absolute inset-0 bg-black/0 hover:bg-black/10 transition-colors flex items-center justify-center gap-2 no-print group/image">
                <button 
+                type="button"
                 onClick={() => fileInputRef.current?.click()}
                 className="opacity-0 group-hover/image:opacity-100 bg-white/90 text-gray-700 px-3 py-1.5 rounded-full text-xs font-medium shadow-sm hover:bg-white flex items-center gap-1.5 transform translate-y-2 group-hover/image:translate-y-0 transition-all"
               >
@@ -127,6 +129,7 @@ export const StepCard: React.FC<StepCardProps> = ({ step, index, onUpdate, onDel
           <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">操作說明</label>
           {step.imageUrl && (
             <button 
+              type="button"
               onClick={handleRegenerateDescription}
               disabled={step.isAnalyzing}
               className="text-xs flex items-center gap-1 text-brand-600 hover:text-brand-700 hover:bg-brand-50 px-2 py-1 rounded transition-colors disabled:opacity-50"
@@ -141,7 +144,7 @@ export const StepCard: React.FC<StepCardProps> = ({ step, index, onUpdate, onDel
           value={step.description}
           onChange={(e) => onUpdate(step.id, { description: e.target.value })}
           placeholder={step.imageUrl ? "請輸入此步驟的具體操作說明..." : "請先上傳圖片..."}
-          className="w-full h-full min-h-[80px] text-sm text-gray-700 p-2 border border-gray-200 rounded focus:ring-2 focus:ring-brand-500 focus:border-transparent outline-none resize-none bg-transparent print:border-none print:p-0 print:resize-none print:text-black"
+          className="w-full h-full min-h-[80px] text-sm text-black p-2 border border-gray-200 rounded focus:ring-2 focus:ring-brand-500 focus:border-transparent outline-none resize-none bg-white print:border-none print:p-0 print:resize-none print:text-black"
         />
       </div>
     </div>

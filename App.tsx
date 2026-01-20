@@ -37,6 +37,8 @@ const App: React.FC = () => {
   };
 
   const handlePrint = () => {
+    // Adding a small timeout ensures any pending renders are complete, though usually not strictly necessary.
+    // Basic window.print() is sufficient for most cases.
     window.print();
   };
 
@@ -58,6 +60,7 @@ const App: React.FC = () => {
             </div>
             <div className="flex items-center gap-3">
               <button 
+                type="button"
                 onClick={handlePrint}
                 className="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-500 transition-colors"
               >
@@ -65,6 +68,7 @@ const App: React.FC = () => {
                 <span>列印 / 另存PDF</span>
               </button>
               <button 
+                type="button"
                 onClick={addStep}
                 className="inline-flex items-center gap-2 px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-brand-600 hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-500 transition-colors"
               >
@@ -88,7 +92,7 @@ const App: React.FC = () => {
                 type="text" 
                 value={docInfo.title}
                 onChange={(e) => setDocInfo({...docInfo, title: e.target.value})}
-                className="w-full text-3xl font-bold text-gray-900 border-none p-0 focus:ring-0 placeholder-gray-300 print:text-4xl"
+                className="w-full text-3xl font-bold text-black bg-white border-none p-0 focus:ring-0 placeholder-gray-300 print:text-4xl"
                 placeholder="輸入 SOP 標題"
               />
             </div>
@@ -102,7 +106,7 @@ const App: React.FC = () => {
                     type="text" 
                     value={docInfo.version}
                     onChange={(e) => setDocInfo({...docInfo, version: e.target.value})}
-                    className="flex-1 border-b border-gray-200 focus:border-brand-500 focus:ring-0 px-0 py-1 bg-transparent"
+                    className="flex-1 border border-gray-300 rounded px-2 py-1 bg-white text-black focus:ring-2 focus:ring-brand-500 focus:border-transparent print:border-none print:p-0"
                     placeholder="1.0"
                   />
                 </div>
@@ -118,7 +122,7 @@ const App: React.FC = () => {
                     type="text" 
                     value={docInfo.author}
                     onChange={(e) => setDocInfo({...docInfo, author: e.target.value})}
-                    className="flex-1 border-b border-gray-200 focus:border-brand-500 focus:ring-0 px-0 py-1 bg-transparent"
+                    className="flex-1 border border-gray-300 rounded px-2 py-1 bg-white text-black focus:ring-2 focus:ring-brand-500 focus:border-transparent print:border-none print:p-0"
                     placeholder="輸入你的名字"
                   />
                 </div>
@@ -128,7 +132,7 @@ const App: React.FC = () => {
                     type="date" 
                     value={docInfo.date}
                     onChange={(e) => setDocInfo({...docInfo, date: e.target.value})}
-                    className="flex-1 border-b border-gray-200 focus:border-brand-500 focus:ring-0 px-0 py-1 bg-transparent"
+                    className="flex-1 border border-gray-300 rounded px-2 py-1 bg-white text-black focus:ring-2 focus:ring-brand-500 focus:border-transparent print:border-none print:p-0"
                   />
                 </div>
               </div>
@@ -150,6 +154,7 @@ const App: React.FC = () => {
           
           {/* Add Step Card (Visual Placeholder) - Hidden in Print */}
           <button 
+            type="button"
             onClick={addStep}
             className="no-print h-full min-h-[300px] border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-400 hover:text-brand-600 hover:border-brand-300 hover:bg-brand-50 transition-all cursor-pointer group"
           >
