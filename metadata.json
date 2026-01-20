@@ -1,0 +1,7 @@
+{
+  "name": "SOP Master - 包裝流程製作工具",
+  "description": "A professional tool to create Standard Operating Procedure (SOP) documents with images and descriptions in a 2-column layout. Features AI-powered step description generation.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
