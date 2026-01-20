@@ -7,9 +7,10 @@ export interface SOPStep {
 
 export interface SOPDocument {
   title: string;
-  author: string;
+  designer: string;
   date: string;
   version: string;
+  model: string;
 }
 
 export type ImageUploadHandler = (file: File, stepId: string) => Promise<void>;

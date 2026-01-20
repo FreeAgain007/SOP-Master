@@ -39,15 +39,15 @@ export const generateStepDescription = async (file: File): Promise<string> => {
             },
           },
           {
-            text: "請簡潔、專業地描述這張圖片中的操作步驟，這是一個產品包裝SOP的其中一步。請使用繁體中文，語氣需像標準作業程序(SOP)指令，例如「將產品放入紙箱中」或「封上膠帶」。不要多餘的開場白。",
+            text: "Please provide a concise and professional description of the operation step shown in this image for a product packaging SOP. Use English. The tone should be imperative and instructional, like 'Place the product into the carton' or 'Seal with tape'. Avoid unnecessary introductory phrases.",
           },
         ],
       },
     });
 
-    return response.text?.trim() || "無法產生描述，請手動輸入。";
+    return response.text?.trim() || "Unable to generate description. Please enter manually.";
   } catch (error) {
     console.error("Gemini API Error:", error);
-    return "AI 分析失敗，請檢查網路或手動輸入。";
+    return "AI Analysis failed. Please check network or enter manually.";
   }
 };

@@ -1,7 +1,7 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { SOPStep, StepActionHandler, StepUpdateHandler } from '../types';
 import { generateStepDescription } from '../services/geminiService';
-import { Trash2, Upload, Sparkles, Loader2, GripVertical, ImagePlus } from 'lucide-react';
+import { Trash2, Upload, Sparkles, Loader2, GripVertical, ImagePlus, AlertCircle, XCircle } from 'lucide-react';
 
 interface StepCardProps {
   step: SOPStep;
@@ -12,31 +12,78 @@ interface StepCardProps {
 
 export const StepCard: React.FC<StepCardProps> = ({ step, index, onUpdate, onDelete }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const processFile = async (file: File) => {
+    setUploadError(null);
+    
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      setUploadError("Unsupported file type. Please upload an image (JPG, PNG, etc).");
+      return;
+    }
+
+    // Validate file size (e.g. 10MB limit)
+    if (file.size > 10 * 1024 * 1024) {
+      setUploadError("Image too large. Please use a file smaller than 10MB.");
+      return;
+    }
+
+    const imageUrl = URL.createObjectURL(file);
+    onUpdate(step.id, { imageUrl, isAnalyzing: true });
+
+    // Automatically trigger AI description
+    try {
+      const description = await generateStepDescription(file);
+      onUpdate(step.id, { description, isAnalyzing: false });
+    } catch (error) {
+      onUpdate(step.id, { isAnalyzing: false });
+      setUploadError("AI Analysis failed. Please check connection.");
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const imageUrl = URL.createObjectURL(file);
-      onUpdate(step.id, { imageUrl, isAnalyzing: true });
+      processFile(file);
+    }
+    // Reset input value to allow selecting the same file again
+    e.target.value = '';
+  };
 
-      // Automatically trigger AI description
-      try {
-        const description = await generateStepDescription(file);
-        onUpdate(step.id, { description, isAnalyzing: false });
-      } catch (error) {
-        onUpdate(step.id, { isAnalyzing: false });
-      }
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!step.isAnalyzing) {
+      setIsDragging(true);
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // Check if we're actually leaving the container (and not just entering a child element)
+    if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    
+    if (step.isAnalyzing) return;
+
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      processFile(file);
     }
   };
 
   const handleRegenerateDescription = async () => {
     if (!step.imageUrl) return;
-    
-    // We need the original file to re-upload to Gemini. 
-    // Since we are using object URLs, we can't easily get the File object back without storing it.
-    // However, for this simplified demo, we assume the user just uploaded it or we accept that re-generation 
-    // might require re-uploading if we don't persist the File object. 
-    // To keep it robust, let's just use the current image URL if it's a blob URL, fetch it to get blob.
+    setUploadError(null);
     
     try {
       onUpdate(step.id, { isAnalyzing: true });
@@ -49,6 +96,7 @@ export const StepCard: React.FC<StepCardProps> = ({ step, index, onUpdate, onDel
     } catch (e) {
       console.error("Failed to regenerate", e);
       onUpdate(step.id, { isAnalyzing: false });
+      setUploadError("Failed to regenerate description. Please try again later.");
     }
   };
 
@@ -60,7 +108,7 @@ export const StepCard: React.FC<StepCardProps> = ({ step, index, onUpdate, onDel
           <span className="flex items-center justify-center w-8 h-8 rounded-full bg-brand-600 text-white font-bold text-sm print:bg-black print:text-white">
             {index + 1}
           </span>
-          <span className="text-sm font-medium text-gray-500 print:text-black">步驟 {index + 1}</span>
+          <span className="text-sm font-medium text-gray-500 print:text-black">Step {index + 1}</span>
         </div>
         
         {/* Actions - Hidden in Print */}
@@ -69,43 +117,72 @@ export const StepCard: React.FC<StepCardProps> = ({ step, index, onUpdate, onDel
             type="button"
             onClick={() => onDelete(step.id)}
             className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors"
-            title="刪除步驟"
+            title="Delete Step"
           >
             <Trash2 size={16} />
           </button>
         </div>
       </div>
 
-      {/* Image Area */}
-      <div className="relative aspect-[4/3] w-full bg-gray-100 border-b border-gray-100 overflow-hidden flex items-center justify-center print:border-gray-300">
+      {/* Image Area with Drag & Drop */}
+      <div 
+        className={`relative aspect-[4/3] w-full overflow-hidden flex items-center justify-center transition-all duration-200
+          ${isDragging 
+            ? 'bg-brand-50 border-2 border-dashed border-brand-400 z-10' 
+            : 'bg-gray-100 border-b border-gray-100 print:border-gray-300'
+          }
+        `}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
         {step.imageUrl ? (
           <>
             <img 
               src={step.imageUrl} 
               alt={`Step ${index + 1}`} 
-              className="w-full h-full object-cover"
+              className={`w-full h-full object-cover transition-opacity duration-200 ${isDragging ? 'opacity-40' : 'opacity-100'}`}
             />
             {/* Overlay Actions for Image - Hidden in Print */}
-            <div className="absolute inset-0 bg-black/0 hover:bg-black/10 transition-colors flex items-center justify-center gap-2 no-print group/image">
-               <button 
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="opacity-0 group-hover/image:opacity-100 bg-white/90 text-gray-700 px-3 py-1.5 rounded-full text-xs font-medium shadow-sm hover:bg-white flex items-center gap-1.5 transform translate-y-2 group-hover/image:translate-y-0 transition-all"
-              >
-                <ImagePlus size={14} />
-                更換圖片
-              </button>
-            </div>
+            {!isDragging && (
+              <div className="absolute inset-0 bg-black/0 hover:bg-black/10 transition-colors flex items-center justify-center gap-2 no-print group/image">
+                <button 
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="opacity-0 group-hover/image:opacity-100 bg-white/90 text-gray-700 px-3 py-1.5 rounded-full text-xs font-medium shadow-sm hover:bg-white flex items-center gap-1.5 transform translate-y-2 group-hover/image:translate-y-0 transition-all"
+                >
+                  <ImagePlus size={14} />
+                  Change Image
+                </button>
+              </div>
+            )}
           </>
         ) : (
           <div 
             onClick={() => fileInputRef.current?.click()}
-            className="w-full h-full flex flex-col items-center justify-center cursor-pointer hover:bg-gray-200 transition-colors text-gray-400 hover:text-gray-500 gap-2"
+            className="w-full h-full flex flex-col items-center justify-center cursor-pointer text-gray-400 hover:text-brand-500 gap-3 p-4 text-center transition-colors"
           >
-            <Upload size={32} />
-            <span className="text-sm">點擊上傳圖片</span>
+            {isDragging ? (
+              <>
+                <div className="p-3 bg-brand-100 text-brand-600 rounded-full animate-bounce">
+                  <Upload size={32} />
+                </div>
+                <span className="text-sm font-medium text-brand-600">Drop to upload</span>
+              </>
+            ) : (
+              <>
+                <div className="p-3 bg-white rounded-full shadow-sm group-hover:scale-110 transition-transform">
+                  <Upload size={24} />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <span className="text-sm font-medium text-gray-600">Click or Drag Image</span>
+                  <span className="text-xs text-gray-400">JPG, PNG supported</span>
+                </div>
+              </>
+            )}
           </div>
         )}
+
         <input 
           type="file" 
           ref={fileInputRef}
@@ -116,9 +193,28 @@ export const StepCard: React.FC<StepCardProps> = ({ step, index, onUpdate, onDel
         
         {/* Loading Overlay */}
         {step.isAnalyzing && (
-          <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center z-10">
+          <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center z-20">
             <Loader2 className="animate-spin text-brand-600 mb-2" size={32} />
-            <span className="text-xs font-medium text-brand-600 animate-pulse">AI 分析中...</span>
+            <span className="text-xs font-medium text-brand-600 animate-pulse">AI Analyzing...</span>
+          </div>
+        )}
+
+        {/* Error Feedback Overlay */}
+        {uploadError && (
+          <div className="absolute inset-x-4 bottom-4 z-30 animate-in slide-in-from-bottom-2 fade-in">
+            <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-xs flex items-center justify-between shadow-sm">
+               <div className="flex items-center gap-2">
+                 <AlertCircle size={14} className="shrink-0" />
+                 <span>{uploadError}</span>
+               </div>
+               <button 
+                 type="button"
+                 onClick={(e) => { e.stopPropagation(); setUploadError(null); }} 
+                 className="text-red-500 hover:text-red-700 p-1 hover:bg-red-100 rounded"
+               >
+                 <XCircle size={14} />
+               </button>
+            </div>
           </div>
         )}
       </div>
@@ -126,24 +222,24 @@ export const StepCard: React.FC<StepCardProps> = ({ step, index, onUpdate, onDel
       {/* Description Area */}
       <div className="p-3 flex-1 flex flex-col">
         <div className="flex justify-between items-center mb-1 no-print">
-          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">操作說明</label>
+          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Description</label>
           {step.imageUrl && (
             <button 
               type="button"
               onClick={handleRegenerateDescription}
               disabled={step.isAnalyzing}
               className="text-xs flex items-center gap-1 text-brand-600 hover:text-brand-700 hover:bg-brand-50 px-2 py-1 rounded transition-colors disabled:opacity-50"
-              title="使用 AI 重新生成描述"
+              title="Regenerate with AI"
             >
               <Sparkles size={12} />
-              AI 寫作
+              AI Write
             </button>
           )}
         </div>
         <textarea
           value={step.description}
           onChange={(e) => onUpdate(step.id, { description: e.target.value })}
-          placeholder={step.imageUrl ? "請輸入此步驟的具體操作說明..." : "請先上傳圖片..."}
+          placeholder={step.imageUrl ? "Enter specific operation instructions..." : "Please upload an image first..."}
           className="w-full h-full min-h-[80px] text-sm text-black p-2 border border-gray-200 rounded focus:ring-2 focus:ring-brand-500 focus:border-transparent outline-none resize-none bg-white print:border-none print:p-0 print:resize-none print:text-black"
         />
       </div>
