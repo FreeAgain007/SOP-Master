@@ -41,54 +41,63 @@ const App: React.FC = () => {
   };
 
   const handlePrint = () => {
-    // Adding a small timeout ensures any pending renders are complete, though usually not strictly necessary.
-    // Basic window.print() is sufficient for most cases.
+    // 1. Store original title
+    const originalTitle = document.title;
+    
+    // 2. Set title to SOP name for "Save as PDF" filename
+    document.title = docInfo.title || 'SOP_Document';
+    
+    // 3. Print
     window.print();
+
+    // 4. Restore title (after a short delay to ensure print dialog picks it up)
+    setTimeout(() => {
+      document.title = originalTitle;
+    }, 500);
   };
 
-  // Helper function to crop image to 4:3 ratio for Word export
-  const cropImageTo4by3 = (imageUrl: string): Promise<string> => {
+  // Add Keyboard shortcut for Print (Ctrl+P / Cmd+P)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'p') {
+        e.preventDefault(); // Prevent default browser print to use our custom handler (which sets filename)
+        handlePrint();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [docInfo.title]); // Re-bind if title changes so the printed filename is correct
+
+  // Helper function to process image for Word export (resize keeping aspect ratio)
+  const processImageForExport = (imageUrl: string): Promise<string> => {
     return new Promise((resolve) => {
       const img = new Image();
       img.crossOrigin = "Anonymous";
       img.onload = () => {
         const canvas = document.createElement('canvas');
-        const targetWidth = 800;
-        const targetHeight = 600; // 4:3 ratio
+        // Set max width higher for better print quality at 9cm (approx 1000px+ at 300dpi)
+        const targetWidth = 1200;
+        // Calculate height to maintain aspect ratio
+        const scale = targetWidth / img.width;
+        const targetHeight = img.height * scale;
+        
         canvas.width = targetWidth;
         canvas.height = targetHeight;
-        const ctx = canvas.getContext('2d');
         
+        const ctx = canvas.getContext('2d');
         if (!ctx) {
           resolve('');
           return;
         }
 
-        // Calculate source rectangle for cover effect
-        let sx, sy, sWidth, sHeight;
-        const imgRatio = img.width / img.height;
-        const targetRatio = targetWidth / targetHeight;
-
-        if (imgRatio > targetRatio) {
-          // Image is wider
-          sHeight = img.height;
-          sWidth = img.height * targetRatio;
-          sy = 0;
-          sx = (img.width - sWidth) / 2;
-        } else {
-          // Image is taller
-          sWidth = img.width;
-          sHeight = img.width / targetRatio;
-          sx = 0;
-          sy = (img.height - sHeight) / 2;
-        }
-
-        // Draw cropped image to canvas
+        // Draw image preserving ratio
+        // Fill white background for transparency
         ctx.fillStyle = "#ffffff";
         ctx.fillRect(0, 0, targetWidth, targetHeight);
-        ctx.drawImage(img, sx, sy, sWidth, sHeight, 0, 0, targetWidth, targetHeight);
+        ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
         
-        resolve(canvas.toDataURL('image/jpeg', 0.85));
+        resolve(canvas.toDataURL('image/jpeg', 0.90));
       };
       img.onerror = () => resolve('');
       img.src = imageUrl;
@@ -100,12 +109,12 @@ const App: React.FC = () => {
     setIsExporting(true);
 
     try {
-      // 1. Process images (crop to 4:3 and convert to Base64)
+      // 1. Process images (convert to Base64 with original aspect ratio)
       const stepsData = await Promise.all(steps.map(async (step, index) => {
         let imgBase64 = '';
         if (step.imageUrl) {
           try {
-            imgBase64 = await cropImageTo4by3(step.imageUrl);
+            imgBase64 = await processImageForExport(step.imageUrl);
           } catch (e) {
             console.error('Error converting image for export', e);
           }
@@ -123,7 +132,7 @@ const App: React.FC = () => {
         return acc;
       }, [] as (typeof stepsData)[]);
 
-      // 3. Construct HTML with A4 page size and "Card" layout style
+      // 3. Construct HTML with strict Table Layout for Word A4
       const htmlContent = `
         <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
         <head>
@@ -141,118 +150,111 @@ const App: React.FC = () => {
           <style>
             @page {
               size: 21cm 29.7cm;
-              margin: 1.5cm 1.5cm 1.5cm 1.5cm;
+              margin: 1.27cm; /* Narrow margins (1.27cm / 0.5 inch all around) */
               mso-page-orientation: portrait;
             }
             body {
               font-family: Arial, sans-serif;
               font-size: 11pt;
             }
-            /* Main Layout Table - Simulating Grid Gap */
+            /* Robust Layout Table */
             table.layout-grid {
               width: 100%;
-              border-collapse: separate;
-              border-spacing: 15px; /* Simulates gap-6 */
-              table-layout: fixed;
+              border-collapse: collapse;
+              table-layout: fixed; /* Crucial for equal columns */
             }
             td.step-cell {
               width: 50%;
               vertical-align: top;
-              border: 1px solid #d1d5db; /* Gray-300 border like card */
+              padding: 4px; /* Reduced padding to fit 9cm image comfortably in 9.23cm column */
+              border: 1px solid #ddd;
               background-color: #ffffff;
-              padding: 0;
             }
             /* Inner Card Styling */
             .card-header {
-              background-color: #f9fafb; /* Gray-50 */
-              border-bottom: 1px solid #e5e7eb; /* Gray-200 */
-              padding: 10px;
-              color: #374151;
+              background-color: #f9fafb;
+              border-bottom: 1px solid #eee;
+              padding: 6px;
+              margin-bottom: 6px;
             }
             .step-badge {
               display: inline-block;
-              background-color: #0284c7; /* Brand-600 */
+              background-color: #0284c7;
               color: #ffffff;
-              width: 24px;
-              height: 24px;
-              border-radius: 12px;
+              width: 20px;
+              height: 20px;
+              border-radius: 50%;
               text-align: center;
-              line-height: 24px;
+              line-height: 20px;
               font-weight: bold;
-              font-size: 10pt;
-              margin-right: 8px;
+              font-size: 9pt;
+              margin-right: 6px;
             }
             .step-label {
               font-weight: bold;
-              font-size: 11pt;
+              font-size: 10pt;
+              color: #333;
             }
-            .image-container {
-              padding: 0;
+            .image-wrapper {
+              width: 100%;
               text-align: center;
-              background-color: #e5e7eb;
-              border-bottom: 1px solid #e5e7eb;
+              margin-bottom: 8px;
+              border: 1px solid #eee;
             }
             img {
-              width: 100%;
-              height: auto;
               display: block;
+              margin: 0 auto;
             }
-            .desc-container {
-              padding: 12px;
-              min-height: 50px;
-            }
-            .desc-label {
-              font-size: 8pt;
-              color: #6b7280;
-              text-transform: uppercase;
-              font-weight: bold;
-              margin-bottom: 4px;
-              display: block;
-            }
+            /* Description text */
             .desc-text {
-              font-size: 11pt;
+              font-size: 10.5pt;
               color: #111;
+              line-height: 1.3;
               white-space: pre-wrap;
+              margin-top: 4px;
             }
             /* Document Header */
             .doc-header {
               text-align: center;
-              margin-bottom: 20px;
+              margin-bottom: 15px;
               border-bottom: 2px solid #0284c7;
-              padding-bottom: 15px;
+              padding-bottom: 10px;
             }
             .doc-title {
-              font-size: 24pt;
+              font-size: 20pt;
               font-weight: bold;
               color: #111;
-              margin-bottom: 10px;
+              margin-bottom: 8px;
             }
-            .meta-row {
+            .meta-info {
+              font-size: 9pt;
+              color: #555;
               text-align: center;
-              color: #4b5563;
-              font-size: 10pt;
-              margin-bottom: 5px;
             }
-            .meta-item {
-              display: inline-block;
-              margin: 0 15px;
-            }
+            .meta-row { margin-bottom: 3px; }
+            .meta-item { margin: 0 8px; display: inline-block; }
           </style>
         </head>
         <body>
           <div class="doc-header">
             <div class="doc-title">${docInfo.title}</div>
-            <div class="meta-row">
-              <span class="meta-item"><strong>Version:</strong> ${docInfo.version}</span>
-              <span class="meta-item"><strong>Model:</strong> ${docInfo.model}</span>
-            </div>
-            <div class="meta-row">
-              <span class="meta-item"><strong>Designer:</strong> ${docInfo.designer}</span>
-              <span class="meta-item"><strong>Date:</strong> ${docInfo.date}</span>
+            <div class="meta-info">
+              <div class="meta-row">
+                <span class="meta-item"><strong>Version:</strong> ${docInfo.version}</span>
+                <span class="meta-item"><strong>Model:</strong> ${docInfo.model}</span>
+              </div>
+              <div class="meta-row">
+                <span class="meta-item"><strong>Designer:</strong> ${docInfo.designer}</span>
+                <span class="meta-item"><strong>Date:</strong> ${docInfo.date}</span>
+              </div>
             </div>
           </div>
           
           <table class="layout-grid">
+            <colgroup>
+                <col width="50%" />
+                <col width="50%" />
+            </colgroup>
             ${tableRows.map(row => `
               <tr>
                 ${row.map(step => `
@@ -261,24 +263,24 @@ const App: React.FC = () => {
                       <span class="step-badge">${step.index}</span>
                       <span class="step-label">Step ${step.index}</span>
                     </div>
-                    <div class="image-container">
+                    <div class="image-wrapper">
                       ${step.imgBase64 
-                        ? `<img src="${step.imgBase64}" />` 
-                        : '<div style="height:200px; line-height:200px; text-align:center; color:#999;">No Image</div>'}
+                        ? `<img src="${step.imgBase64}" style="width:9cm; height:auto;" />` 
+                        : '<div style="height:150px; line-height:150px; text-align:center; color:#999; background:#eee;">No Image</div>'}
                     </div>
-                    <div class="desc-container">
-                      <span class="desc-label">Description</span>
+                    <div>
                       <div class="desc-text">${step.description ? step.description.replace(/\n/g, '<br/>') : ''}</div>
                     </div>
                   </td>
                 `).join('')}
                 ${row.length === 1 ? '<td style="border:none;"></td>' : ''}
               </tr>
+              <tr><td colspan="2" style="height: 10px; border:none;"></td></tr>
             `).join('')}
           </table>
           
-          <div style="margin-top: 30px; text-align: center; font-size: 9pt; color: #9ca3af; border-top: 1px solid #e5e7eb; padding-top: 10px;">
-            SOP Generated by SOP Master
+          <div style="margin-top: 20px; text-align: center; font-size: 8pt; color: #999; border-top: 1px solid #eee; padding-top: 5px;">
+            Generated by SOP Master
           </div>
         </body>
         </html>
@@ -335,10 +337,10 @@ const App: React.FC = () => {
                 type="button"
                 onClick={handlePrint}
                 className="inline-flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-500 transition-colors"
-                title="Save as PDF via Print"
+                title="Print (Ctrl+P)"
               >
                 <Printer size={18} />
-                <span className="hidden md:inline">Export PDF</span>
+                <span className="hidden md:inline">Print</span>
               </button>
 
               <button 
@@ -437,7 +439,7 @@ const App: React.FC = () => {
         </div>
 
         {/* Steps Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 print:grid-cols-2 print:gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 print:grid-cols-2 print:gap-2">
           {steps.map((step, index) => (
             <StepCard 
               key={step.id} 
@@ -504,7 +506,7 @@ const App: React.FC = () => {
                   <h3 className="font-semibold text-gray-900 mb-1">4. Export Options</h3>
                   <p>Use the buttons in the top toolbar to export your SOP:</p>
                   <ul className="list-disc pl-5 mt-1 space-y-1">
-                    <li><strong>Export PDF:</strong> Opens the print dialog. Select "Save as PDF" to save the document as a high-quality PDF file.</li>
+                    <li><strong>Print / Save PDF:</strong> Opens the print dialog (or press Ctrl+P). Select "Save as PDF" to save the document as a high-quality PDF file.</li>
                     <li><strong>Export Word:</strong> Downloads a .doc file that opens in Microsoft Word, allowing for further editing of text and layout. Images are automatically cropped to a 4:3 ratio to match the preview.</li>
                   </ul>
                 </section>

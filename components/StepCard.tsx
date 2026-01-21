@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { SOPStep, StepActionHandler, StepUpdateHandler } from '../types';
 import { generateStepDescription } from '../services/geminiService';
-import { Trash2, Upload, Sparkles, Loader2, GripVertical, ImagePlus, AlertCircle, XCircle } from 'lucide-react';
+import { Trash2, Upload, Sparkles, Loader2, ImagePlus, AlertCircle, XCircle } from 'lucide-react';
 
 interface StepCardProps {
   step: SOPStep;
@@ -101,11 +101,11 @@ export const StepCard: React.FC<StepCardProps> = ({ step, index, onUpdate, onDel
   };
 
   return (
-    <div className="group relative bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 flex flex-col page-break-inside-avoid print:border-gray-300 print:shadow-none print:break-inside-avoid">
+    <div className="group relative bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 flex flex-col page-break-inside-avoid break-inside-avoid print:border-gray-300 print:shadow-none">
       {/* Header / Numbering */}
-      <div className="flex items-center justify-between p-3 border-b border-gray-100 bg-gray-50 rounded-t-lg print:bg-gray-100 print:border-gray-300">
+      <div className="flex items-center justify-between p-3 border-b border-gray-100 bg-gray-50 rounded-t-lg print:bg-gray-100 print:border-gray-300 print:p-2">
         <div className="flex items-center gap-2">
-          <span className="flex items-center justify-center w-8 h-8 rounded-full bg-brand-600 text-white font-bold text-sm print:bg-black print:text-white">
+          <span className="flex items-center justify-center w-8 h-8 rounded-full bg-brand-600 text-white font-bold text-sm print:bg-black print:text-white print:w-6 print:h-6 print:text-xs">
             {index + 1}
           </span>
           <span className="text-sm font-medium text-gray-500 print:text-black">Step {index + 1}</span>
@@ -126,10 +126,10 @@ export const StepCard: React.FC<StepCardProps> = ({ step, index, onUpdate, onDel
 
       {/* Image Area with Drag & Drop */}
       <div 
-        className={`relative aspect-[4/3] w-full overflow-hidden flex items-center justify-center transition-all duration-200
+        className={`relative w-full overflow-hidden flex items-center justify-center transition-all duration-200
           ${isDragging 
-            ? 'bg-brand-50 border-2 border-dashed border-brand-400 z-10' 
-            : 'bg-gray-100 border-b border-gray-100 print:border-gray-300'
+            ? 'bg-brand-50 border-2 border-dashed border-brand-400 z-10 aspect-[4/3]' 
+            : 'bg-gray-100 border-b border-gray-100 print:border-gray-300 aspect-[4/3] print:aspect-auto print:h-auto'
           }
         `}
         onDragOver={handleDragOver}
@@ -141,7 +141,10 @@ export const StepCard: React.FC<StepCardProps> = ({ step, index, onUpdate, onDel
             <img 
               src={step.imageUrl} 
               alt={`Step ${index + 1}`} 
-              className={`w-full h-full object-cover transition-opacity duration-200 ${isDragging ? 'opacity-40' : 'opacity-100'}`}
+              className={`w-full h-full object-cover transition-opacity duration-200 
+                ${isDragging ? 'opacity-40' : 'opacity-100'}
+                print:w-[9cm] print:h-auto print:mx-auto print:object-contain
+              `}
             />
             {/* Overlay Actions for Image - Hidden in Print */}
             {!isDragging && (
@@ -158,29 +161,36 @@ export const StepCard: React.FC<StepCardProps> = ({ step, index, onUpdate, onDel
             )}
           </>
         ) : (
-          <div 
-            onClick={() => fileInputRef.current?.click()}
-            className="w-full h-full flex flex-col items-center justify-center cursor-pointer text-gray-400 hover:text-brand-500 gap-3 p-4 text-center transition-colors"
-          >
-            {isDragging ? (
-              <>
-                <div className="p-3 bg-brand-100 text-brand-600 rounded-full animate-bounce">
-                  <Upload size={32} />
-                </div>
-                <span className="text-sm font-medium text-brand-600">Drop to upload</span>
-              </>
-            ) : (
-              <>
-                <div className="p-3 bg-white rounded-full shadow-sm group-hover:scale-110 transition-transform">
-                  <Upload size={24} />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <span className="text-sm font-medium text-gray-600">Click or Drag Image</span>
-                  <span className="text-xs text-gray-400">JPG, PNG supported</span>
-                </div>
-              </>
-            )}
-          </div>
+          <>
+            {/* Placeholder for Screen - Hidden in Print */}
+            <div 
+              onClick={() => fileInputRef.current?.click()}
+              className="w-full h-full flex flex-col items-center justify-center cursor-pointer text-gray-400 hover:text-brand-500 gap-3 p-4 text-center transition-colors aspect-[4/3] no-print"
+            >
+              {isDragging ? (
+                <>
+                  <div className="p-3 bg-brand-100 text-brand-600 rounded-full animate-bounce">
+                    <Upload size={32} />
+                  </div>
+                  <span className="text-sm font-medium text-brand-600">Drop to upload</span>
+                </>
+              ) : (
+                <>
+                  <div className="p-3 bg-white rounded-full shadow-sm group-hover:scale-110 transition-transform">
+                    <Upload size={24} />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <span className="text-sm font-medium text-gray-600">Click or Drag Image</span>
+                    <span className="text-xs text-gray-400">JPG, PNG supported</span>
+                  </div>
+                </>
+              )}
+            </div>
+            {/* Placeholder for Print */}
+            <div className="hidden print:flex w-full h-24 items-center justify-center bg-gray-50 text-gray-400 text-xs italic">
+              No Image
+            </div>
+          </>
         )}
 
         <input 
@@ -236,12 +246,19 @@ export const StepCard: React.FC<StepCardProps> = ({ step, index, onUpdate, onDel
             </button>
           )}
         </div>
+        
+        {/* Textarea for Editing - Hidden in Print */}
         <textarea
           value={step.description}
           onChange={(e) => onUpdate(step.id, { description: e.target.value })}
           placeholder={step.imageUrl ? "Enter specific operation instructions..." : "Please upload an image first..."}
-          className="w-full h-full min-h-[80px] text-sm text-black p-2 border border-gray-200 rounded focus:ring-2 focus:ring-brand-500 focus:border-transparent outline-none resize-none bg-white print:border-none print:p-0 print:resize-none print:text-black"
+          className="w-full h-full min-h-[80px] text-sm text-black p-2 border border-gray-200 rounded focus:ring-2 focus:ring-brand-500 focus:border-transparent outline-none resize-none bg-white print:hidden"
         />
+        
+        {/* Div for Printing - Visible only in Print */}
+        <div className="hidden print:block text-sm text-black whitespace-pre-wrap leading-relaxed">
+          {step.description || "No description provided."}
+        </div>
       </div>
     </div>
   );
