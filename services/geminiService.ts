@@ -3,16 +3,12 @@ import { GoogleGenAI } from "@google/genai";
 // Initialize Gemini AI
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-/**
- * Converts a File object to a Base64 string.
- */
 const fileToBase64 = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.readAsDataURL(file);
     reader.onload = () => {
       const result = reader.result as string;
-      // Remove the data URL prefix (e.g., "data:image/jpeg;base64,")
       const base64Data = result.split(',')[1];
       resolve(base64Data);
     };
@@ -24,12 +20,17 @@ const fileToBase64 = (file: File): Promise<string> => {
  * Generates a description for a packaging step image using Gemini.
  */
 export const generateStepDescription = async (file: File): Promise<string> => {
+  // Check if navigator is online
+  if (!navigator.onLine) {
+    throw new Error("Offline: Cannot reach Gemini API");
+  }
+
   try {
     const base64Data = await fileToBase64(file);
     const mimeType = file.type;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash-image',
+      model: 'gemini-3-flash-preview',
       contents: {
         parts: [
           {
@@ -48,6 +49,6 @@ export const generateStepDescription = async (file: File): Promise<string> => {
     return response.text?.trim() || "Unable to generate description. Please enter manually.";
   } catch (error) {
     console.error("Gemini API Error:", error);
-    return "AI Analysis failed. Please check network or enter manually.";
+    throw error;
   }
 };
