@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
-import { SOPStep, StepActionHandler, StepUpdateHandler } from '../types';
-import { generateStepDescription } from '../services/geminiService';
+import { SOPStep, StepActionHandler, StepUpdateHandler } from '../types.ts';
+import { generateStepDescription } from '../services/geminiService.ts';
 import { Trash2, Upload, Sparkles, Loader2, ImagePlus, AlertCircle, XCircle } from 'lucide-react';
 
 interface StepCardProps {

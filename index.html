@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SOP Master - Packaging SOP Tool</title>
-    <link rel="manifest" href="/manifest.json">
+    <link rel="manifest" href="./manifest.json">
     <meta name="theme-color" content="#0284c7">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -29,19 +29,22 @@
     </script>
     <style>
       @media print {
-        @page {
-          margin: 1.0cm;
-        }
-        body {
-          -webkit-print-color-adjust: exact;
-          print-color-adjust: exact;
-        }
-        .no-print {
-          display: none !important;
-        }
-        .page-break-inside-avoid {
-          page-break-inside: avoid;
-        }
+        @page { margin: 1.0cm; }
+        body { -webkit-print-color-adjust: exact; print-color-adjust: exact; background: white; }
+        .no-print { display: none !important; }
+        .page-break-inside-avoid { page-break-inside: avoid; break-inside: avoid; }
+      }
+      #file-warning {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: white;
+        z-index: 9999;
+        padding: 2rem;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
       }
     </style>
   <script type="importmap">
@@ -60,16 +63,35 @@
 </script>
 </head>
   <body class="bg-gray-50 text-gray-900 antialiased">
+    <!-- Browser Security Policy Warning -->
+    <div id="file-warning">
+      <div class="max-w-md">
+        <div class="bg-amber-100 text-amber-700 p-4 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
+        </div>
+        <h2 class="text-2xl font-bold mb-2">瀏覽器安全限制</h2>
+        <p class="text-gray-600 mb-6">由於瀏覽器不允許直接從 <code>file://</code> (直接開啟 HTML) 加載插件，這會導致頁面顯示空白。</p>
+        <div class="space-y-3 text-left bg-gray-50 p-4 rounded-lg border border-gray-200">
+          <p class="text-sm font-bold">解決方法：</p>
+          <p class="text-sm">1. 使用 <b>VS Code Live Server</b> 插件開啟。</p>
+          <p class="text-sm">2. 使用命令行執行 <code>npx serve</code> 或 <code>python -m http.server</code>。</p>
+          <p class="text-sm">3. 將此文件上傳至 GitHub Pages 或任何 Web 服務器。</p>
+        </div>
+      </div>
+    </div>
+
     <div id="root"></div>
-    <script type="module" src="/index.tsx"></script>
+    <script type="module" src="./index.tsx"></script>
     <script>
-      if ('serviceWorker' in navigator) {
+      // Protocol Check
+      if (window.location.protocol === 'file:') {
+        document.getElementById('file-warning').style.display = 'flex';
+      }
+
+      // SW registration
+      if ('serviceWorker' in navigator && (window.location.protocol === 'http:' || window.location.protocol === 'https:')) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js').then(registration => {
-            console.log('SW registered: ', registration);
-          }).catch(registrationError => {
-            console.log('SW registration failed: ', registrationError);
-          });
+          navigator.serviceWorker.register('./sw.js');
         });
       }
     </script>

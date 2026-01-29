@@ -1,12 +1,12 @@
-const CACHE_NAME = 'sop-master-cache-v1';
+const CACHE_NAME = 'sop-master-cache-v2';
 const ASSETS_TO_CACHE = [
-  '/',
-  '/index.html',
-  '/index.tsx',
-  '/App.tsx',
-  '/types.ts',
-  '/services/geminiService.ts',
-  '/components/StepCard.tsx',
+  './',
+  './index.html',
+  './index.tsx',
+  './App.tsx',
+  './types.ts',
+  './services/geminiService.ts',
+  './components/StepCard.tsx',
   'https://cdn.tailwindcss.com',
   'https://esm.sh/react@^19.2.3',
   'https://esm.sh/react-dom@^19.2.3/',
@@ -26,6 +26,17 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     caches.match(event.request).then((response) => {
       return response || fetch(event.request);
+    })
+  );
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames.filter((cacheName) => cacheName !== CACHE_NAME)
+          .map((cacheName) => caches.delete(cacheName))
+      );
     })
   );
 });
